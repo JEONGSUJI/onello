@@ -116,7 +116,7 @@ const descriptionDisplay = description => {
     <button type="button" class="description-btn save btn40 mt10" style="width: 80px;">Save</button>`;
   } else {
     html += `
-    <textarea class="description-content hide" placeholder="Add a more detailed Description.."></textarea>
+    <textarea class="description-content hide" placeholder="Add a more detailed Description..">${description}</textarea>
     <div class="description-textbox">${description}</div>
     <button type="button" class="description-btn modify btn40 mt10" style="width: 80px;">Modify</button>`;
   }
@@ -124,7 +124,34 @@ const descriptionDisplay = description => {
   return html;
 };
 
-const renderPopup = (workTitle, subWorkTitle, writeDate, labels, description) => {
+const checklistDisplay = checklist => {
+  if (checklist === undefined) return '';
+
+  let html = '';
+
+  checklist.forEach(list => {
+    html += `
+      <li>
+        <label class="chk" for="${list.id}">
+          <input id="${list.id}" type="checkbox" ${list.completed ? 'checked': ''}><span>${list.content}</span>
+        </label>
+      </li>`;
+  });
+
+  return html;
+};
+
+const checkProgress = checklist => {
+  if (checklist === undefined) return '0%';
+
+  const allCount = +checklist.length;
+  const checkCount = +checklist.filter(list => list.completed).length;
+  const currentPer = `${`${Math.floor((100 / allCount) * checkCount)}%`}`;
+
+  return currentPer;
+};
+
+const renderPopup = (workTitle, subWorkTitle, writeDate, labels, description, checklist) => {
   const $node = document.createElement('div');
   $node.classList.add('popup-wrap');
   $node.innerHTML += `
@@ -135,7 +162,7 @@ const renderPopup = (workTitle, subWorkTitle, writeDate, labels, description) =>
         <div class="popup-subtitle">in list <a href="#self">${workTitle}</a></div>
         <div class="popup-created-time">${writeDate}</div>
       </div>
-      <button type="button" class="btn-close-popup layer-close">X</button>
+      <button type="button" class="btn-close-popup">X</button>
       <div class="popup-main-content clear-fix">
         <div class="content-area">
           <div class="description-area">
@@ -145,16 +172,18 @@ const renderPopup = (workTitle, subWorkTitle, writeDate, labels, description) =>
           <div class="checklist-area hide">
             <div class="area-title">checklist</div>
             <div class="progress-contents">
-              <span class="complete-percent">98%</span>
+              <span class="complete-percent">${checkProgress(checklist)}</span>
               <div class="progress-bar">
-                <span class="success-bar" style="width: 50%"></span>
+                <span class="success-bar" style="width: ${checkProgress(checklist)}"></span>
               </div>
             </div>
             <ul class="check-list">
-              <li><label class="chk" for="check1"><input id="check1" type="checkbox"><span>ddasda</span></label></li>
-              <li><label class="chk" for="check2"><input id="check2" type="checkbox"><span>ddasda</span></label></li>
+              ${checklistDisplay(checklist)}
             </ul>
-            <button type="button" class="btn-check-add btn40 c5 mt20" style="width: 120px;">add an item</button>
+            <div class="add-checklist-box">
+              <input type="text" class="add-checklist-input" placeholder="Add a more Checklist.." />
+              <button type="button" class="btn-check-add btn40 c5" style="width: 120px;">add an item</button>
+            </div>
           </div>
         </div>
         <div class="popup-add-ons">
@@ -279,18 +308,14 @@ const deleteSubwork = (titleId, subTitleId) => {
     .then(getWork);
 };
 
-
-const closePopup = target => {
-  const $popup = target.parentNode.parentNode;
-  $popup.remove();
-};
-
 const openPopup = (titleId, subTitleId) => {
-  let workTitle = '';
-  let workList = '';
-  let subWorkTitle = '';
-  let writeDate = '';
-  let labels = '';
+  let workTitle = null;
+  let workList = null;
+  let subWorkTitle = null;
+  let writeDate = null;
+  let labels = null;
+  let description = null;
+  let checklist = null;
 
   ajax.get(`http://localhost:3000/works/${titleId}`)
     .then(work => JSON.parse(work))
@@ -305,20 +330,21 @@ const openPopup = (titleId, subTitleId) => {
       subWorkTitle = subwork[0].title;
       writeDate = subwork[0].date;
       labels = subwork[0].labels;
+      description = subwork[0].description;
+      checklist = subwork[0].checklist;
 
-      if (subwork[0].description) {
-        renderPopup(workTitle, subWorkTitle, writeDate, labels, subwork[0].description)
-      } else {
-        renderPopup(workTitle, subWorkTitle, writeDate, labels)
-      }
+      renderPopup(workTitle, subWorkTitle, writeDate, labels, description, checklist);
 
+      const $popup = document.querySelector('.popup-wrap');
+      const $labels = document.querySelector('.labels');
       const $btnChecklist = document.querySelector('.btn-checklist');
       const $checklistArea = document.querySelector('.checklist-area');
-      const $description = document.querySelector('.description-content');
+      const $descriptionTextarea = document.querySelector('.description-content');
       const $descriptionBtn = document.querySelector('.description-btn');
-      // const $btnSave = document.querySelector('.btn-save');
-      // const $btnModify = document.querySelector('.btn-modify');
       const $descriptionTextbox = document.querySelector('.description-textbox');
+      const $checkListInput = document.querySelector('.add-checklist-input');
+      const $checkListAddBtn = document.querySelector('.btn-check-add');
+      const $checklist = document.querySelector('.check-list');
 
       $btnChecklist.onclick = () => {
         $btnChecklist.textContent === 'CHECKLIST HIDE' ? $btnChecklist.innerHTML = 'CHECKLIST SHOW' : $btnChecklist.textContent = 'CHECKLIST HIDE';
@@ -328,24 +354,24 @@ const openPopup = (titleId, subTitleId) => {
 
       $descriptionBtn.onclick = () => {
         if ($descriptionBtn.classList.contains('save')) {
-          if ($description.value.trim() !== '') {
-            $description.classList.add('hide');
+          if ($descriptionTextarea.value.trim() !== '') {
+            $descriptionTextarea.classList.add('hide');
             $descriptionBtn.classList.remove('save');
             $descriptionBtn.classList.add('modify');
             $descriptionBtn.textContent = 'Modify';
             $descriptionTextbox.classList.remove('hide');
-            $descriptionTextbox.textContent = $description.value;
+            $descriptionTextbox.textContent = $descriptionTextarea.value;
 
             ajax.get(`http://localhost:3000/works/${titleId}`)
               .then(res => JSON.parse(res).list)
               .then(subTitle => subTitle.filter(item => item.id === +subTitleId))
               .then(subWorks => {
-                if (subWorks[0].description === undefined) subWorks[0]['description'] = `${$description.value}`;
+                subWorks[0]['description'] = `${$descriptionTextarea.value}`;
 
                 return subWorks[0]['description'];
               })
               .then(description => {
-                const data = workList.map(item => item.id === +subTitleId ? item = { ...item, id: +subTitleId, description  } : item);
+                const data = workList.map(subwork => subwork.id === +subTitleId ? subwork = { ...subwork, id: +subTitleId, description  } : subwork);
 
                 ajax.patch(`http://localhost:3000/works/${titleId}`, {
                   id: +titleId,
@@ -354,16 +380,31 @@ const openPopup = (titleId, subTitleId) => {
                 });
               });
           }
+        } else {
+          $descriptionTextarea.classList.remove('hide');
+          $descriptionBtn.classList.remove('modify');
+          $descriptionBtn.classList.add('save');
+          $descriptionBtn.textContent = 'Save';
+          $descriptionTextbox.classList.add('hide');
+
+          ajax.get(`http://localhost:3000/works/${titleId}`)
+            .then(res => JSON.parse(res).list)
+            .then(subTitle => subTitle.filter(item => item.id === +subTitleId))
+            .then(subWorks => {
+              if (subWorks[0].description === undefined) subWorks[0]['description'] = `${$descriptionTextarea.value}`;
+              return subWorks[0]['description'];
+            })
+            .then(description => {
+              const data = workList.map(subwork => subwork.id === +subTitleId ? subwork = { ...subwork, id: +subTitleId, description } : subwork);
+
+              ajax.patch(`http://localhost:3000/works/${titleId}`, {
+                id: +titleId,
+                title: workTitle,
+                list: data
+              });
+            });
         }
       };
-
-      const $closeBtn = document.querySelector('.btn-close-popup');
-
-      $closeBtn.onclick = ({ target }) => {
-        closePopup(target);
-      };
-
-      const $labels = document.querySelector('.labels');
 
       $labels.onchange = ({ target }) => {
         const stateId = target.parentNode.parentNode.id;
@@ -371,7 +412,6 @@ const openPopup = (titleId, subTitleId) => {
         subwork[0].labels.map(label => label.state === stateId ? label.check = !label.check : label);
 
         const data = workList.map(item => item.id === +subTitleId ? item = { ...item, id: +subTitleId, labels: subwork[0].labels } : item);
-
 
         ajax.patch(`http://localhost:3000/works/${titleId}`, {
           id: +titleId,
@@ -385,8 +425,72 @@ const openPopup = (titleId, subTitleId) => {
               .then(render);
           });
       };
-    });
-};
+
+      $checkListAddBtn.onclick = () => {
+        if ($checkListInput.value.trim() === '' && $checklist.children.length < 4) return alert('값을 입력해주세요');
+        if ($checklist.children.length >= 4) return alert('최대 4개까지 입력할 수 있습니다');
+
+        const content = $checkListInput.value;
+
+        ajax.get(`http://localhost:3000/works/${titleId}`)
+          .then(res => JSON.parse(res))
+          .then(work => work.list)
+          .then(subwork => {
+            const thisSub = subwork.filter(sub => sub.id === +subTitleId);
+            if (thisSub[0].checklist === undefined) thisSub[0].checklist = [];
+
+            const maxId = thisSub[0].checklist.length ? thisSub[0].checklist.length + 1 : 1;
+
+            const checklistValue = [...thisSub[0].checklist, { id: `check${titleId}0${maxId}`, content, completed: false }];
+
+            const data = workList.map(item => item.id === +subTitleId ? { ...item, id: +subTitleId, checklist: checklistValue } : item);
+
+            ajax.patch(`http://localhost:3000/works/${titleId}`, {
+              id: +titleId,
+              title: workTitle,
+              list: data
+            })
+              .then(res => {
+                console.log('add', res, 'titleId', titleId, 'maxId', maxId);
+                $checklist.innerHTML += `
+                  <li>
+                    <label class="chk" for="check${titleId}0${maxId}">
+                      <input id="check${titleId}0${maxId}" type="checkbox"><span>${content}</span>
+                    </label>
+                  </li>`;
+                $checkListInput.value = '';
+              });
+          });
+      };
+
+      $checklist.onchange = ({ target }) => {
+
+        const hi = document.querySelector('.');
+
+        ajax.get(`http://localhost:3000/works/${titleId}`)
+          .then(res => JSON.parse(res))
+          .then(work => work.list)
+          .then(subwork => {
+            const subWork = subwork.filter(sub => sub.id === +subTitleId);
+            const checklist = subWork[0].checklist.map(check => check.id === target.id ? { ...check, completed: !check.completed } : check );
+
+            const data = workList.map(item => item.id === +subTitleId ? { ...item, id: +subTitleId, checklist } : item);
+
+            ajax.patch(`http://localhost:3000/works/${titleId}`, {
+              id: +titleId,
+              title: workTitle,
+              list: data
+            });
+          });
+      };
+
+      $popup.onclick = e => {
+        if (e.target.classList.contains('btn-close-popup') || e.target.classList.contains('dim')) {
+          $popup.remove();
+
+          e.stopPropagation();
+        }
+      };
 
 // Events
 window.onload = () => {
