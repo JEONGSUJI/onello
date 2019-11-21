@@ -312,7 +312,6 @@ const openPopup = (titleId, subTitleId) => {
         renderPopup(workTitle, subWorkTitle, writeDate, labels)
       }
 
-
       const $btnChecklist = document.querySelector('.btn-checklist');
       const $checklistArea = document.querySelector('.checklist-area');
       const $description = document.querySelector('.description-content');
